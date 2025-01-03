@@ -1,4 +1,6 @@
-**Positions Calculator Summary**  
+## Positions Calculator Summary 
+
+---
 
 The Positions Calculator is a tool designed for creating custom levels in **Colobot**. It offers a combination of manual and automated features that simplify the process of designing and organizing objects within various environments.  
 
