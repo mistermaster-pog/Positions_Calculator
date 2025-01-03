@@ -28,6 +28,7 @@ This specialized program is designed for positioning objects within spaceships:
 - Output: The tool calculates and generates precise positions for all objects, ensuring logical and consistent placement.  
 
 Export Functionality
+
 All placements can be exported into a `scene.txt` file, ready for seamless integration into your Colobot levels.  
 
 The Positions Calculator streamlines the creation of custom levels, offering precision, efficiency, and flexibility for Colobot enthusiasts and level designers alike.
