@@ -116,7 +116,7 @@ class MapEditor:
         ttk.Button(self.frame, text="Apply Water Level", command=self.apply_water_level).grid(row=10, column=1, sticky="e", padx=10)
 
         # Przyciski
-        ttk.Button(self.frame, text="Load Map (.png)", command=self.load_map).grid(row=5, column=1, padx=10)
+        ttk.Button(self.frame, text="Load Map (.png/.bmp)", command=self.load_map).grid(row=5, column=1, padx=10)
         ttk.Button(self.frame, text="Clear Map", command=self.clear_map).grid(row=5, column=0, sticky="e", padx=10)
         ttk.Button(self.frame, text="Remove Last Object", command=self.remove_last_object).grid(row=6, column=1, pady=10)
         ttk.Button(self.frame, text="Copy Output", command=self.copy_output).grid(row=6, column=0, columnspan=1, sticky="e", padx=10)
@@ -247,7 +247,7 @@ class MapEditor:
 
     def load_map(self):
         self.clear_cache()
-        file_path = filedialog.askopenfilename(filetypes=[["PNG files", "*.png"]])
+        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.bmp")])
         if file_path:
             try:
                 img = Image.open(file_path)
@@ -910,5 +910,5 @@ label.pack(side="left")
 # Etykieta z tekstem w lewym dolnym rogu
 label = tk.Label(foot_frame, text="Press ESC to exit full screen", font=("Arial", 15, "italic"), anchor="e", justify="right")
 label.pack(side="right")
-
+root.iconbitmap('images/icon.ico')
 root.mainloop()
