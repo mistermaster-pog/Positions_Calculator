@@ -33,3 +33,10 @@ This specialized program is designed for positioning objects within spaceships:
 All placements can be exported into a `scene.txt` file, ready for seamless integration into your **Colobot** levels.  
 
 The Positions Calculator streamlines the creation of custom levels, offering precision, efficiency, and flexibility for Colobot enthusiasts and level designers alike.
+
+### How to Export to .exe:
+If you've made changes to the code and now want to export your project to a standalone `.exe` file, you can use the provided `build.bat` script:
+1. Place the `build.bat` file in the **Positions Calculator** root folder.
+2. Run `build.bat` to generate the `.exe` file. The export will create the executable in the `Positions Calculator/release/dist` folder.
+3. Copy the `.exe` file from the `release/dist` folder and place it in the root folder of **Positions Calculator**.
+4. Once the `.exe` is in the root folder, you can run it directly from there.
