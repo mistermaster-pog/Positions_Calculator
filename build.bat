@@ -22,7 +22,7 @@ if %errorlevel% neq 0 (
 )
 
 :: Lista wymaganych bibliotek
-set "requirements=tkinter pillow pyperclip matplotlib numpy scipy perlin-noise"
+set "requirements=tkinter pillow pyperclip matplotlib numpy scipy perlin-noise re"
 
 :: Sprawdzanie i instalowanie brakujących bibliotek
 for %%i in (%requirements%) do (
