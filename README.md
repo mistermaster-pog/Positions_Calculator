@@ -6,7 +6,7 @@ The Positions Calculator is a tool designed for creating custom levels in **Colo
 
 ### Key Features  
 
-#### **Map Editor**  
+#### Map Editor  
 The Map Editor is the central component, offering a rich set of features for detailed level design:  
 - **Relief Loading**: Import any terrain relief as the base for your map.  
 - **Water Level Loading**: Define water levels to enhance environmental realism.  
@@ -15,6 +15,10 @@ The Map Editor is the central component, offering a rich set of features for det
 - **Full Object List**: Browse a detailed list of objects, each with preview images for easier identification.  
 - **Search Functionality**: Locate specific objects swiftly using the search bar.  
 - **Manual Mode**: Define custom object names and parameters manually, including attributes like `power=100`. This mode also supports setting or randomizing the `dir` (orientation) parameter for each object.  
+- **Object Import from Scene File**: Import a list of objects directly from a `scene.txt` file for efficient editing and integration. After making changes, click the **Refresh** button to save and apply updates to objects.  
+- **Cursor and Object Information**:  
+  - View the precise position on the map where the cursor is located.  
+  - Hover over a placed object on the map to instantly see its details, including object type and attributes.
 
 #### **Random Object Generation**  
 This feature allows users to populate a specific area with random objects by defining:  
