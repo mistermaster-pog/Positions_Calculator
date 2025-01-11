@@ -7,6 +7,7 @@ import pyperclip
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import re
 from scipy.spatial import KDTree
 from perlin_noise import PerlinNoise
 from objects.objects import objects
@@ -94,32 +95,34 @@ class MapEditor:
         self.dir_entry.configure(state="disabled")
 
         # Insect Mode Options
-        ttk.Label(self.frame, text="Insect Mode:").grid(row=7, column=0, sticky="e", padx=5)
-        ttk.Checkbutton(self.frame, text="Enable", variable=self.insect_mode, command=self.toggle_insect_mode).grid(row=7, column=1, sticky="w", padx=5)
+        ttk.Label(self.frame, text="Insect Mode:").grid(row=8, column=0, sticky="e", padx=5)
+        ttk.Checkbutton(self.frame, text="Enable", variable=self.insect_mode, command=self.toggle_insect_mode).grid(row=8, column=1, sticky="w", padx=5)
 
-        ttk.Label(self.frame, text="Mode:").grid(row=8, column=0, sticky="e", padx=5)
+        ttk.Label(self.frame, text="Mode:").grid(row=9, column=0, sticky="e", padx=5)
         self.insect_mode_combo = ttk.Combobox(self.frame, values=["Idle Ant", "Advancing Ant", "Idle Moving Spider"], state="disabled", textvariable=self.selected_insect_mode, width=20)
-        self.insect_mode_combo.grid(row=8, column=1, sticky="w", padx=5)
+        self.insect_mode_combo.grid(row=9, column=1, sticky="w", padx=5)
         self.selected_insect_mode.set("Idle Ant")
         self.insect_mode_combo.bind("<<ComboboxSelected>>", self.update_insect_image)
 
-        ttk.Label(self.frame, text="radius/time:").grid(row=9, column=0, sticky="e", padx=5)
+        ttk.Label(self.frame, text="radius/time:").grid(row=10, column=0, sticky="e", padx=5)
         self.radius_entry = ttk.Entry(self.frame, textvariable=self.radius_value, width=10)
-        self.radius_entry.grid(row=9, column=1, sticky="w", padx=5)
+        self.radius_entry.grid(row=10, column=1, sticky="w", padx=5)
         self.radius_entry.configure(state="disabled")
 
-        ttk.Label(self.frame, text="Water Level (0-60):").grid(row=10, column=0, sticky="e", padx=5)
+        ttk.Label(self.frame, text="Water Level (0-60):").grid(row=11, column=0, sticky="e", padx=5)
         self.water_level_entry = ttk.Entry(self.frame, width=10)
-        self.water_level_entry.grid(row=10, column=1, sticky="w", padx=5)
+        self.water_level_entry.grid(row=11, column=1, sticky="w", padx=5)
         self.water_level_entry.insert(0, "30.0")
 
-        ttk.Button(self.frame, text="Apply Water Level", command=self.apply_water_level).grid(row=10, column=1, sticky="e", padx=10)
+        ttk.Button(self.frame, text="Apply Water Level", command=self.apply_water_level).grid(row=11, column=1, sticky="e", padx=10)
 
         # Przyciski
-        ttk.Button(self.frame, text="Load Map (.png/.bmp)", command=self.load_map).grid(row=5, column=1, padx=10)
-        ttk.Button(self.frame, text="Clear Map", command=self.clear_map).grid(row=5, column=0, sticky="e", padx=10)
-        ttk.Button(self.frame, text="Remove Last Object", command=self.remove_last_object).grid(row=6, column=1, pady=10)
-        ttk.Button(self.frame, text="Copy Output", command=self.copy_output).grid(row=6, column=0, columnspan=1, sticky="e", padx=10)
+        ttk.Button(self.frame, text="Load Positions", command=self.load_positions).grid(row=5, column=0, columnspan=1, sticky="e", padx=10)
+        ttk.Button(self.frame, text="Load Map (.png/.bmp)", command=self.load_map).grid(row=5, column=1, sticky="w", padx=10)
+        ttk.Button(self.frame, text="Clear Map", command=self.clear_map).grid(row=6, column=0, sticky="e", padx=10)
+        ttk.Button(self.frame, text="Remove Last Object", command=self.remove_last_object).grid(row=6, column=1, columnspan=1, sticky="w", padx=10)
+        ttk.Button(self.frame, text="Copy Output", command=self.copy_output).grid(row=7, column=0, columnspan=1, sticky="e", padx=10)
+        ttk.Button(self.frame, text="Refresh", command=self.refresh).grid(row=7, column=1, columnspan=1, sticky="w", padx=10)
 
         # Ramka na output
         self.output_frame = ttk.Frame(self.frame)
@@ -132,19 +135,19 @@ class MapEditor:
         self.load_default_map()
 
         # Pole wyszukiwania obiektów
-        ttk.Label(self.frame, text="Search:").grid(row=11, column=0, sticky="e", padx=5)
+        ttk.Label(self.frame, text="Search:").grid(row=12, column=0, sticky="e", padx=5)
         self.search_entry = ttk.Entry(self.frame, width=30)
-        self.search_entry.grid(row=11, column=1, sticky="ew", padx=5)
+        self.search_entry.grid(row=12, column=1, sticky="ew", padx=5)
         self.search_entry.bind("<KeyRelease>", self.filter_object_list)
 
         # Lista obiektów
         self.object_listbox = tk.Listbox(self.frame, height=20)
-        self.object_listbox.grid(row=12, column=0, columnspan=2, rowspan=4, sticky="nsew", padx=5, pady=5)
+        self.object_listbox.grid(row=13, column=0, columnspan=2, rowspan=4, sticky="nsew", padx=5, pady=5)
         self.object_listbox.bind("<ButtonRelease-1>", self.on_object_select)
 
         # Ramka na obraz wybranego obiektu
         self.selected_object_image_frame = ttk.Frame(self.frame, width=200, height=200)
-        self.selected_object_image_frame.grid(row=16, column=0, columnspan=2, pady=10)
+        self.selected_object_image_frame.grid(row=17, column=0, columnspan=2, pady=10)
         self.selected_object_image_frame.grid_propagate(False)  # Zapobiega zmienianiu rozmiaru ramki
 
         self.selected_object_image_label = ttk.Label(self.selected_object_image_frame, anchor="center")
@@ -382,6 +385,63 @@ class MapEditor:
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid water level: {e}")
 
+    def load_positions(self):
+        filepath = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
+        if not filepath:
+            return  # Jeśli użytkownik anulował, nic nie rób
+
+        try:
+            # Otwórz plik w kodowaniu UTF-8
+            with open(filepath, "r", encoding="utf-8") as file:
+                lines = file.readlines()
+
+            objects_added = 0
+            self.object_positions = []  # Wyczyść obiekty przed załadowaniem nowych
+            self.object_code_lines = []
+
+            for line in lines:
+                line = line.strip()  # Usuń białe znaki
+                if line.startswith("//") or not line:
+                    continue  # Ignoruj komentarze i puste linie
+
+                # Dopasowanie do wzorca
+                match = re.match(r"^CreateObject pos=\s*([\d.-]+);\s*([\d.-]+)\s*(.+)", line)
+                if match:
+                    x = float(match.group(1))
+                    y = float(match.group(2))
+                    rest_of_line = match.group(3)
+
+                    # Dodaj obiekt na mapę
+                    self.add_object_to_map(x, y, rest_of_line)
+                    objects_added += 1
+
+            # Załaduj obiekty do pola tekstowego
+            self.update_output()
+
+            if objects_added > 0:
+                messagebox.showinfo("Success", f"Loaded {objects_added} objects successfully!")
+            else:
+                messagebox.showinfo("Info", "No valid objects found in the file.")
+
+        except UnicodeDecodeError as e:
+            messagebox.showerror("Error", f"Failed to load positions: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+
+    def add_object_to_map(self, x, y, rest_of_line):
+        # Oblicz pozycję w pikselach na mapie
+        dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
+        dot_y = int(self.offset_y + self.map_size // 2 - y * self.current_zoom)
+
+        # Dodaj obiekt na mapę
+        dot = self.canvas.create_oval(dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3, fill="red", outline="red")
+        self.object_positions.append((x, y, rest_of_line, dot))
+
+        # Dodaj do output
+        output_line = f"CreateObject pos={x:.2f};{y:.2f} {rest_of_line}"
+        self.object_code_lines.append(output_line)
+        self.update_output()
+
     def toggle_insect_mode(self):
         state = "normal" if self.insect_mode.get() else "disabled"
         self.insect_mode_combo.configure(state=state)
@@ -485,10 +545,40 @@ class MapEditor:
         self.update_output()
 
     def update_output(self):
-        self.output_text.delete(1.0, tk.END)
+        self.output_text.delete(1.0, tk.END)  # Wyczyść dotychczasowy tekst
         for line in self.object_code_lines:
-            self.output_text.insert(tk.END, f"{line}\n")
-        
+            self.output_text.insert(tk.END, f"{line}\n")  # Wstaw obiekty w nowym formacie
+
+        # Umożliwienie użytkownikowi edycji tekstu w polu
+        self.output_text.configure(state="normal")  # Pozwól na edytowanie
+
+    def refresh(self):
+        # Wyczyszczenie mapy przed ponownym narysowaniem obiektów
+        self.canvas.delete("all")
+        self.object_positions = []
+        self.object_code_lines = []
+
+        # Odczytanie edytowanych danych z output_text
+        lines = self.output_text.get(1.0, tk.END).splitlines()
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith("//") or not line:
+                continue
+
+            # Dopasowanie do wzorca
+            match = re.match(r"^CreateObject pos=\s*([\d.-]+);\s*([\d.-]+)\s*(.+)", line)
+            if match:
+                x = float(match.group(1))
+                y = float(match.group(2))
+                rest_of_line = match.group(3)
+
+                # Dodanie obiektu na mapie
+                self.add_object_to_map(x, y, rest_of_line)
+
+        self.redraw_map()  # Zaktualizuj mapę
+        messagebox.showinfo("Success", "Map refreshed successfully!")
+
     def copy_output(self):
        self.parent.clipboard_clear()
        self.parent.clipboard_append(self.output_text.get(1.0, tk.END))
@@ -904,7 +994,7 @@ foot_frame = tk.Frame(root)
 foot_frame.pack(side="bottom", fill="x", padx=10, pady=10)
 
 # Etykieta z tekstem w lewym dolnym rogu
-label = tk.Label(foot_frame, text="Colobot Positions Multi-Tool Calculator Version: 1.0.0\nAuthor: bipel88", font=("Arial", 8), anchor="w", justify="left")
+label = tk.Label(foot_frame, text="Colobot Positions Multi-Tool Calculator Version: 1.1.0\nAuthor: bipel88", font=("Arial", 8), anchor="w", justify="left")
 label.pack(side="left")
 
 # Etykieta z tekstem w lewym dolnym rogu
