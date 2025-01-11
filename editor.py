@@ -31,6 +31,9 @@ class MapEditor:
         self.start_drag_x = 0
         self.start_drag_y = 0
 
+        self.offset_x = 0
+        self.offset_y = 0
+
         self.object_positions = []  # Lista obiektów (pozycje na mapie)
         self.object_code_lines = []  # Lista kodu (linia dla każdego obiektu)
         self.default_map_path = "images/map.png"  # Ustaw domyślną ścieżkę
@@ -67,6 +70,14 @@ class MapEditor:
         self.canvas.bind("<MouseWheel>", self.zoom_map)
         self.canvas.bind("<ButtonPress-2>", self.start_drag)
         self.canvas.bind("<B2-Motion>", self.drag_map)
+        self.canvas.bind("<Motion>", self.on_mouse_move)  # Rejestracja zdarzenia ruchu myszy
+
+        self.position_label = tk.Label(self.frame, text="X: 0, Y: 0", width=20, anchor="w")
+        self.position_label.grid(row=25, column=2, sticky="w")  # Etykieta do wyświetlania współrzędnych
+
+        self.type_label = tk.Label(self.frame, text="type= ", width=20, anchor="w")
+        self.type_label.grid(row=25, column=3, sticky="w")  # Etykieta do wyświetlania typu obiektu
+
 
         # Tryb wyboru obiektu (manualny lub lista)
         self.selection_mode_var = tk.StringVar(value=self.selection_mode)
@@ -129,8 +140,16 @@ class MapEditor:
         self.output_frame.grid(row=1, column=5, rowspan=25, pady=10, padx=10, sticky="nsew")
 
         # Pole tekstowe na wynik
-        self.output_text = tk.Text(self.output_frame, height=30, width=100)
+        self.output_text = tk.Text(self.output_frame, height=30, width=90, wrap=tk.NONE)  # Wyłącz zawijanie tekstu
         self.output_text.pack(fill=tk.BOTH, expand=True)
+
+        # Poziomy pasek przewijania
+        self.scrollbar_x = tk.Scrollbar(self.output_frame, orient='horizontal', command=self.output_text.xview)
+        self.scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
+
+        # Połączenie scrollbara z polem tekstowym
+        self.output_text.config(xscrollcommand=self.scrollbar_x.set)
+
 
         self.load_default_map()
 
@@ -157,6 +176,53 @@ class MapEditor:
         self.object_listbox.selection_set(0)  # Zaznaczenie pierwszego elementu listy domyślnie
         self.update_selection_mode(None)  # Ustaw stan zgodnie z trybem domyślnym
         self.update_selected_object_image()  # Wyświetl domyślny obraz
+
+
+    def on_mouse_move(self, event):
+        mouse_x = event.x
+        mouse_y = event.y
+
+        # Przekształcenie współrzędnych kursora na współrzędne mapy
+        map_x = (mouse_x - self.offset_x - self.map_size // 2) / self.current_zoom
+        map_y = -(mouse_y - self.offset_y - self.map_size // 2) / self.current_zoom
+
+        # Zaktualizowanie etykiety z nowymi współrzędnymi
+        self.position_label.config(text=f"X: {map_x:.2f}, Y: {map_y:.2f}")
+
+        # Sprawdzanie, czy kursor jest nad jakimkolwiek obiektem
+        self.check_for_dot_hover(mouse_x, mouse_y)
+
+    def check_for_dot_hover(self, mouse_x, mouse_y):
+        # Sprawdzamy, czy kursor jest blisko którejkolwiek kropki na mapie
+        for obj in self.object_positions:
+            if len(obj) == 5:  # Kropka zawiera 5 elementów
+                x, y, object_type, direction, dot = obj  # Rozpakowujemy na odpowiednie zmienne
+            elif len(obj) == 4:  # Kropka zawiera 4 elementy
+                x, y, object_type, dot = obj  # Rozpakowujemy na 4 elementy
+                direction = None  # Brak kierunku, ustawiamy jako None
+            else:
+                continue  # Jeśli nie ma odpowiedniej liczby elementów, pomijamy ją
+
+            # Przeliczamy pozycję kropki na mapie
+            dot_x = self.offset_x + self.map_size // 2 + x * self.current_zoom
+            dot_y = self.offset_y + self.map_size // 2 - y * self.current_zoom
+            distance = ((mouse_x - dot_x) ** 2 + (mouse_y - dot_y) ** 2) ** 0.5  # Obliczamy odległość
+
+            if distance < 10:  # Jeżeli kursor znajduje się w pobliżu kropki
+                # Jeśli w object_type jest "type=", wyciągamy wartość po "type="
+                if "type=" in object_type:
+                    start_index = object_type.find("type=") + len("type=")
+                    end_index = object_type.find(" ", start_index)
+                    if end_index == -1:  # Jeśli nie ma spacji, bierzemy całą resztę tekstu
+                        object_type = object_type[start_index:]
+                    else:
+                        object_type = object_type[start_index:end_index]
+                # Wyświetlamy informacje o typie obiektu w osobnej etykiecie
+                self.type_label.config(text=f"type= {object_type}")
+
+                return  # Przerywamy po znalezieniu obiektu
+
+        self.type_label.config(text="type= ")  # Jeżeli nie ma obiektu, usuwamy typ obiektu
 
     def clear_cache(self):
         self.map_cache = {}
@@ -385,63 +451,6 @@ class MapEditor:
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid water level: {e}")
 
-    def load_positions(self):
-        filepath = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
-        if not filepath:
-            return  # Jeśli użytkownik anulował, nic nie rób
-
-        try:
-            # Otwórz plik w kodowaniu UTF-8
-            with open(filepath, "r", encoding="utf-8") as file:
-                lines = file.readlines()
-
-            objects_added = 0
-            self.object_positions = []  # Wyczyść obiekty przed załadowaniem nowych
-            self.object_code_lines = []
-
-            for line in lines:
-                line = line.strip()  # Usuń białe znaki
-                if line.startswith("//") or not line:
-                    continue  # Ignoruj komentarze i puste linie
-
-                # Dopasowanie do wzorca
-                match = re.match(r"^CreateObject pos=\s*([\d.-]+);\s*([\d.-]+)\s*(.+)", line)
-                if match:
-                    x = float(match.group(1))
-                    y = float(match.group(2))
-                    rest_of_line = match.group(3)
-
-                    # Dodaj obiekt na mapę
-                    self.add_object_to_map(x, y, rest_of_line)
-                    objects_added += 1
-
-            # Załaduj obiekty do pola tekstowego
-            self.update_output()
-
-            if objects_added > 0:
-                messagebox.showinfo("Success", f"Loaded {objects_added} objects successfully!")
-            else:
-                messagebox.showinfo("Info", "No valid objects found in the file.")
-
-        except UnicodeDecodeError as e:
-            messagebox.showerror("Error", f"Failed to load positions: {e}")
-        except Exception as e:
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
-
-    def add_object_to_map(self, x, y, rest_of_line):
-        # Oblicz pozycję w pikselach na mapie
-        dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
-        dot_y = int(self.offset_y + self.map_size // 2 - y * self.current_zoom)
-
-        # Dodaj obiekt na mapę
-        dot = self.canvas.create_oval(dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3, fill="red", outline="red")
-        self.object_positions.append((x, y, rest_of_line, dot))
-
-        # Dodaj do output
-        output_line = f"CreateObject pos={x:.2f};{y:.2f} {rest_of_line}"
-        self.object_code_lines.append(output_line)
-        self.update_output()
-
     def toggle_insect_mode(self):
         state = "normal" if self.insect_mode.get() else "disabled"
         self.insect_mode_combo.configure(state=state)
@@ -479,6 +488,7 @@ class MapEditor:
             messagebox.showwarning("Warning", "Please select or enter a valid object type!")
             return
 
+        # Obliczanie współrzędnych z większą dokładnością (do setnej części)
         x = (event.x - self.map_size // 2 - self.offset_x) / self.current_zoom
         y = (self.map_size // 2 - event.y + self.offset_y) / self.current_zoom
 
@@ -503,13 +513,13 @@ class MapEditor:
                 radius = self.radius_value.get()
                 rand_x = x + random.uniform(-radius / 2, radius / 2)
                 rand_y = y + random.uniform(-radius / 2, radius / 2)
-                cmdline = f"cmdline= {rand_x:.1f}; {rand_y:.1f}; {radius:.1f} script1=\"{script1}\""
+                cmdline = f"cmdline= {rand_x:.2f}; {rand_y:.2f}; {radius:.2f} script1=\"{script1}\""
 
             elif selected_mode == "Advancing Ant":
                 self.current_object_type = "AlienAnt"
                 script1 = "ant02.txt"
                 time_delay = self.radius_value.get()
-                cmdline = f"cmdline= {time_delay:.1f} script1=\"{script1}\""
+                cmdline = f"cmdline= {time_delay:.2f} script1=\"{script1}\""
 
             elif selected_mode == "Idle Moving Spider":
                 self.current_object_type = "AlienSpider"
@@ -517,19 +527,23 @@ class MapEditor:
                 radius = self.radius_value.get()
                 rand_x = x + random.uniform(-radius / 2, radius / 2)
                 rand_y = y + random.uniform(-radius / 2, radius / 2)
-                cmdline = f"cmdline= {rand_x:.1f}; {rand_y:.1f}; {radius:.1f} script1=\"{script1}\""
+                cmdline = f"cmdline= {rand_x:.2f}; {rand_y:.2f}; {radius:.2f} script1=\"{script1}\""
 
+        # Dodanie obiektu na mapę z większą dokładnością
         obj_id = len(self.object_positions)
         dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
         dot_y = int(self.offset_y + self.map_size // 2 - y * self.current_zoom)
 
+        # Tworzenie kropki na mapie
         dot = self.canvas.create_oval(dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3, fill="red", outline="red")
         self.object_positions.append((x, y, self.current_object_type, direction, dot))
 
-        output_line = f"CreateObject pos={x:.1f};{y:.1f} dir={direction} type={self.current_object_type}"
+        # Generowanie polecenia z dokładnością do setnej części
+        output_line = f"CreateObject pos={x:.2f};{y:.2f} dir={direction:.1f} type={self.current_object_type}"
         if cmdline:
             output_line += f" {cmdline} run=1"
 
+        # Dodanie polecenia do listy i aktualizacja wyjścia
         self.object_code_lines.append(output_line)
         self.update_output()
 
@@ -542,6 +556,61 @@ class MapEditor:
         self.canvas.delete(last_object[-1])
         self.object_code_lines.pop()
 
+        self.update_output()
+
+    def load_positions(self):
+        filepath = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
+        if not filepath:
+            return  # Jeśli użytkownik anulował, nic nie rób
+
+        try:
+            # Otwórz plik w kodowaniu UTF-8
+            with open(filepath, "r", encoding="utf-8") as file:
+                lines = file.readlines()
+
+            objects_added = 0
+            # Usuwanie tylko nowych wierszy z pliku, reszta zostaje
+            for line in lines:
+                line = line.strip()  # Usuń białe znaki
+                if line.startswith("//") or not line:
+                    continue  # Ignoruj komentarze i puste linie
+
+                # Dopasowanie do wzorca
+                match = re.match(r"^CreateObject pos=\s*([\d.-]+);\s*([\d.-]+)\s*(.+)", line)
+                if match:
+                    x = float(match.group(1))
+                    y = float(match.group(2))
+                    rest_of_line = match.group(3)
+
+                    # Dodaj obiekt na mapę (w tym przypadku nie usuwamy poprzednich obiektów)
+                    self.add_object_to_map(x, y, rest_of_line)
+                    objects_added += 1
+
+            # Załaduj obiekty do pola tekstowego
+            self.update_output()
+
+            if objects_added > 0:
+                messagebox.showinfo("Success", f"Loaded {objects_added} objects successfully!")
+            else:
+                messagebox.showinfo("Info", "No valid objects found in the file.")
+
+        except UnicodeDecodeError as e:
+            messagebox.showerror("Error", f"Failed to load positions: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+
+    def add_object_to_map(self, x, y, rest_of_line):
+        # Oblicz pozycję w pikselach na mapie
+        dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
+        dot_y = int(self.offset_y + self.map_size // 2 - y * self.current_zoom)
+
+        # Dodaj obiekt na mapę
+        dot = self.canvas.create_oval(dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3, fill="red", outline="red")
+        self.object_positions.append((x, y, rest_of_line, dot))
+
+        # Dodaj do output
+        output_line = f"CreateObject pos={x:.2f};{y:.2f} {rest_of_line}"
+        self.object_code_lines.append(output_line)
         self.update_output()
 
     def update_output(self):
