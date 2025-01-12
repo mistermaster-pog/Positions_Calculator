@@ -20,6 +20,7 @@ The Map Editor is the central component, offering a rich set of features for det
   - View the precise position on the map where the cursor is located.  
   - Hover over a placed object on the map to instantly see its details, including object type and attributes.
 - **Multi-Object Selection and Random Placement:** The Listbox now supports multi-selection, allowing you to choose multiple objects using Ctrl or Shift. When placing an object, the editor can randomly select one from the chosen objects, streamlining the creation of diverse environments.
+- **Delete Mode for Object Removal:** A new "Delete Mode" feature has been added, allowing users to remove objects directly by clicking on them. The editor now tracks whether Delete Mode is active and, upon mouse click, checks for objects under the cursor, removing them from the map.
 
 #### **Random Object Generation**  
 This feature allows users to populate a specific area with random objects by defining:  

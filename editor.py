@@ -71,6 +71,7 @@ class MapEditor:
         self.canvas.bind("<ButtonPress-2>", self.start_drag)
         self.canvas.bind("<B2-Motion>", self.drag_map)
         self.canvas.bind("<Motion>", self.on_mouse_move)  # Rejestracja zdarzenia ruchu myszy
+        
 
         self.position_label = tk.Label(self.frame, text="X: 0, Y: 0", width=20, anchor="w")
         self.position_label.grid(row=25, column=2, sticky="w")  # Etykieta do wyświetlania współrzędnych
@@ -93,7 +94,8 @@ class MapEditor:
         self.object_type_entry.insert(0, self.current_object_type)
         
         # Opcje dla dir
-        ttk.Label(self.frame, text="Dir Mode:").grid(row=3, column=0, sticky="e", padx=5)
+        self.dir_mode_label = ttk.Label(self.frame, text="Dir Mode:")
+        self.dir_mode_label.grid(row=3, column=0, sticky="e", padx=5)
         ttk.Label(self.frame, text="dir=").grid(row=4, column=0, sticky="e", padx=5)
         self.dir_mode_combo = ttk.Combobox(self.frame, values=["Random", "Manual"], state="readonly", width=8)
         self.dir_mode_combo.current(0)
@@ -106,8 +108,11 @@ class MapEditor:
         self.dir_entry.configure(state="disabled")
 
         # Insect Mode Options
-        ttk.Label(self.frame, text="Insect Mode:").grid(row=8, column=0, sticky="e", padx=5)
-        ttk.Checkbutton(self.frame, text="Enable", variable=self.insect_mode, command=self.toggle_insect_mode).grid(row=8, column=1, sticky="w", padx=5)
+        self.insect_mode_label = ttk.Label(self.frame, text="Insect Mode:")
+        self.insect_mode_label.grid(row=8, column=0, sticky="e", padx=5)
+
+        self.insect_mode_check = ttk.Checkbutton(self.frame, text="Enable", variable=self.insect_mode, command=self.toggle_insect_mode)
+        self.insect_mode_check.grid(row=8, column=1, sticky="w", padx=5)
 
         ttk.Label(self.frame, text="Mode:").grid(row=9, column=0, sticky="e", padx=5)
         self.insect_mode_combo = ttk.Combobox(self.frame, values=["Idle Ant", "Advancing Ant", "Idle Moving Spider"], state="disabled", textvariable=self.selected_insect_mode, width=20)
@@ -130,10 +135,13 @@ class MapEditor:
         # Przyciski
         ttk.Button(self.frame, text="Load Positions", command=self.load_positions).grid(row=5, column=0, columnspan=1, sticky="e", padx=10)
         ttk.Button(self.frame, text="Load Map (.png/.bmp)", command=self.load_map).grid(row=5, column=1, sticky="w", padx=10)
-        ttk.Button(self.frame, text="Clear Map", command=self.clear_map).grid(row=6, column=0, sticky="e", padx=10)
-        ttk.Button(self.frame, text="Remove Last Object", command=self.remove_last_object).grid(row=6, column=1, columnspan=1, sticky="w", padx=10)
-        ttk.Button(self.frame, text="Copy Output", command=self.copy_output).grid(row=7, column=0, columnspan=1, sticky="e", padx=10)
-        ttk.Button(self.frame, text="Refresh", command=self.refresh).grid(row=7, column=1, columnspan=1, sticky="w", padx=10)
+        ttk.Button(self.frame, text="Clear Map", command=self.confirm_clear_map).grid(row=6, column=0, sticky="e", padx=10)
+        ttk.Button(self.frame, text="Copy Output", command=self.copy_output).grid(row=7, column=1, columnspan=1, sticky="w", padx=10)
+        ttk.Button(self.frame, text="Refresh", command=self.refresh).grid(row=6, column=1, columnspan=1, sticky="w", padx=10)
+
+        self.delete_mode_var = tk.BooleanVar(value=False)  # Zmienna przechowująca stan trybu usuwania
+        ttk.Checkbutton(self.frame, text="Delete Mode", variable=self.delete_mode_var, command=self.toggle_delete_mode).grid(row=7, column=0, columnspan=1, sticky="e", padx=10)
+        self.canvas.bind("<Button-1>", self.on_canvas_click) # Przypisz obsługę kliknięcia myszy do funkcji delete_object
 
         # Ramka na output
         self.output_frame = ttk.Frame(self.frame)
@@ -455,11 +463,12 @@ class MapEditor:
             messagebox.showerror("Error", f"Invalid water level: {e}")
 
     def toggle_insect_mode(self):
+        """Włącza/wyłącza tryb insektów oraz aktualizuje stan elementów UI."""
         state = "normal" if self.insect_mode.get() else "disabled"
         self.insect_mode_combo.configure(state=state)
         self.radius_entry.configure(state=state)
 
-        # Disable object type entry, listbox, and selection mode combo when insect mode is enabled
+        # Wyłącz elementy związane z trybem wyboru obiektów
         object_type_state = "disabled" if self.insect_mode.get() else "normal"
         self.object_type_entry.configure(state=object_type_state)
         self.object_listbox.configure(state=object_type_state)
@@ -469,7 +478,49 @@ class MapEditor:
         if self.insect_mode.get():
             self.update_insect_image()
         else:
-            self.update_selected_object_image()  # Reset obraz po wyłączeniu Insect Modez
+            self.update_selected_object_image()  # Reset obraz po wyłączeniu Insect Mode
+
+    def toggle_delete_mode(self):
+        """Włącza/wyłącza tryb usuwania obiektów i aktualizuje stan elementów UI."""
+        if self.delete_mode_var.get():
+            # Włącz tryb usuwania: wyłącz wszystkie inne kontrolki i przypisz kliknięcia do usuwania
+            self.insect_mode_combo.configure(state="disabled")
+            self.radius_entry.configure(state="disabled")
+            self.object_type_entry.configure(state="disabled")
+            self.object_listbox.configure(state="disabled")
+            self.selection_mode_combo.configure(state="disabled")
+            self.search_entry.configure(state="disabled")
+            self.dir_mode_combo.configure(state="disabled")
+            
+            # Disable insect mode label and checkbutton
+            self.insect_mode_label.configure(state="disabled")
+            self.insect_mode_check.configure(state="disabled")
+            self.dir_mode_label.configure(state="disabled")  # Ensure this label is created
+            self.dir_mode_combo.configure(state="disabled")
+
+            # Przypisz kliknięcie do funkcji usuwania obiektów
+            self.canvas.bind("<Button-1>", self.delete_object)
+        else:
+            # Wyłącz tryb usuwania: przywróć wszystkie kontrolki
+            self.insect_mode_combo.configure(state="normal")
+            self.radius_entry.configure(state="normal")
+            self.object_type_entry.configure(state="normal")
+            self.object_listbox.configure(state="normal")
+            self.selection_mode_combo.configure(state="normal")
+            self.search_entry.configure(state="normal")
+            self.dir_mode_combo.configure(state="normal")
+            
+            # Przywróć etykiety i przyciski
+            self.insect_mode_label.configure(state="normal")
+            self.insect_mode_check.configure(state="normal")
+            self.dir_mode_label.configure(state="normal")
+            self.dir_mode_combo.configure(state="normal")
+
+            # Przypisz kliknięcie do funkcji stawiania obiektów
+            self.canvas.bind("<Button-1>", self.place_object)
+
+            # Przywróć obrazek obiektu po wyłączeniu delete mode
+            self.update_selected_object_image()
 
     def update_insect_image(self, event=None):
         """Aktualizuje obraz dla trybu Insect Mode."""
@@ -509,7 +560,30 @@ class MapEditor:
                 return
 
         cmdline = ""
-        # Insect mode logic...
+        if self.insect_mode.get():
+            selected_mode = self.selected_insect_mode.get()
+
+            if selected_mode == "Idle Ant":
+                self.current_object_type = "AlienAnt"
+                script1 = "antict.txt"
+                radius = self.radius_value.get()
+                rand_x = x + random.uniform(-radius / 2, radius / 2)
+                rand_y = y + random.uniform(-radius / 2, radius / 2)
+                cmdline = f"cmdline= {rand_x:.2f}; {rand_y:.2f}; {radius:.2f} script1=\"{script1}\""
+
+            elif selected_mode == "Advancing Ant":
+                self.current_object_type = "AlienAnt"
+                script1 = "ant02.txt"
+                time_delay = self.radius_value.get()
+                cmdline = f"cmdline= {time_delay:.2f} script1=\"{script1}\""
+
+            elif selected_mode == "Idle Moving Spider":
+                self.current_object_type = "AlienSpider"
+                script1 = "spidict.txt"
+                radius = self.radius_value.get()
+                rand_x = x + random.uniform(-radius / 2, radius / 2)
+                rand_y = y + random.uniform(-radius / 2, radius / 2)
+                cmdline = f"cmdline= {rand_x:.2f}; {rand_y:.2f}; {radius:.2f} script1=\"{script1}\""
 
         obj_id = len(self.object_positions)
         dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
@@ -525,48 +599,83 @@ class MapEditor:
         self.object_code_lines.append(output_line)
         self.update_output()
 
-    def remove_last_object(self):
-        if not self.object_positions:
-            messagebox.showwarning("Warning", "No objects to remove!")
+    def on_canvas_click(self, event):
+        """Obsługuje kliknięcie na canvas w zależności od aktywnego trybu."""
+        if self.delete_mode_var.get():
+            # Jeśli aktywny jest Delete Mode, wykonaj usuwanie obiektu
+            self.delete_object(event)
+        else:
+            # W przeciwnym razie wykonaj dodawanie obiektu
+            self.place_object(event)
+
+    def delete_object(self, event):
+        """Usuwa obiekt po kliknięciu w trybie Delete Mode."""
+        if not self.delete_mode_var.get():
             return
 
-        last_object = self.object_positions.pop()
-        self.canvas.delete(last_object[-1])
-        self.object_code_lines.pop()
+        # Przekształć współrzędne kliknięcia na pozycję na mapie
+        x_click = (event.x - self.map_size // 2 - self.offset_x) / self.current_zoom
+        y_click = (self.map_size // 2 - event.y + self.offset_y) / self.current_zoom
 
-        self.update_output()
+        # Znajdź najbliższy obiekt w zasięgu (np. promień 5 jednostek)
+        radius = 5 / self.current_zoom  # Promień zależny od zoomu
+        for i, obj in enumerate(self.object_positions):
+            if len(obj) == 5:  # Case for 5 values: (x, y, obj_type, direction, dot)
+                x, y, obj_type, direction, dot = obj
+            elif len(obj) == 4:  # Case for 4 values: (x, y, obj_type, direction)
+                x, y, obj_type, direction = obj
+                dot = None  # If there's no dot, set it to None or handle accordingly
+            else:
+                continue  # Skip if the tuple doesn't match expected length
+
+            # Check if the click is within the deletion radius
+            if abs(x - x_click) <= radius and abs(y - y_click) <= radius:
+                # Usuń obiekt z canvas (usuwa tylko jeśli dot istnieje)
+                if dot:
+                    self.canvas.delete(dot)
+
+                # Usuń obiekt z list
+                del self.object_positions[i]
+                del self.object_code_lines[i]
+
+                # Zaktualizuj wyjście i mapę
+                self.update_output()
+                self.redraw_map()
+                break  # Przerywamy po znalezieniu pierwszego obiektu
 
     def load_positions(self):
+        # Open file dialog to select a file
         filepath = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
         if not filepath:
-            return  # Jeśli użytkownik anulował, nic nie rób
+            return  # If the user cancels, do nothing
 
         try:
-            # Otwórz plik w kodowaniu UTF-8
+            # Open the file with UTF-8 encoding
             with open(filepath, "r", encoding="utf-8") as file:
                 lines = file.readlines()
 
             objects_added = 0
-            # Usuwanie tylko nowych wierszy z pliku, reszta zostaje
+            # Process each line in the file
             for line in lines:
-                line = line.strip()  # Usuń białe znaki
+                line = line.strip()  # Remove leading/trailing whitespaces
                 if line.startswith("//") or not line:
-                    continue  # Ignoruj komentarze i puste linie
+                    continue  # Skip comments and empty lines
 
-                # Dopasowanie do wzorca
+                # Match the line against the pattern
                 match = re.match(r"^CreateObject pos=\s*([\d.-]+);\s*([\d.-]+)\s*(.+)", line)
                 if match:
                     x = float(match.group(1))
                     y = float(match.group(2))
-                    rest_of_line = match.group(3)
+                    rest_of_line = match.group(3)  # Rest of the line (e.g., type, direction)
 
-                    # Dodaj obiekt na mapę (w tym przypadku nie usuwamy poprzednich obiektów)
+                    # Add object to the map (without removing previous objects)
                     self.add_object_to_map(x, y, rest_of_line)
                     objects_added += 1
 
-            # Załaduj obiekty do pola tekstowego
+            # Update the output field with the newly loaded objects
             self.update_output()
 
+            # Display a message depending on the result
             if objects_added > 0:
                 messagebox.showinfo("Success", f"Loaded {objects_added} objects successfully!")
             else:
@@ -578,58 +687,73 @@ class MapEditor:
             messagebox.showerror("Error", f"An unexpected error occurred: {e}")
 
     def add_object_to_map(self, x, y, rest_of_line):
-        # Oblicz pozycję w pikselach na mapie
+        # Calculate position in pixels on the map based on zoom and offset
         dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
         dot_y = int(self.offset_y + self.map_size // 2 - y * self.current_zoom)
 
-        # Dodaj obiekt na mapę
+        # Add the object as a dot on the canvas
         dot = self.canvas.create_oval(dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3, fill="red", outline="red")
+
+        # Append the object data to the list of object positions
         self.object_positions.append((x, y, rest_of_line, dot))
 
-        # Dodaj do output
+        # Format the object creation line for the output
         output_line = f"CreateObject pos={x:.2f};{y:.2f} {rest_of_line}"
         self.object_code_lines.append(output_line)
+
+        # Update the output display with the new object
         self.update_output()
 
     def update_output(self):
-        self.output_text.delete(1.0, tk.END)  # Wyczyść dotychczasowy tekst
-        for line in self.object_code_lines:
-            self.output_text.insert(tk.END, f"{line}\n")  # Wstaw obiekty w nowym formacie
+        # Clear the existing text in the output text widget
+        self.output_text.delete(1.0, tk.END)
 
-        # Umożliwienie użytkownikowi edycji tekstu w polu
-        self.output_text.configure(state="normal")  # Pozwól na edytowanie
+        # Insert the new object lines into the output text area
+        for line in self.object_code_lines:
+            self.output_text.insert(tk.END, f"{line}\n")
+
+        # Allow the user to edit the output text if needed
+        self.output_text.configure(state="normal")
 
     def refresh(self):
-        # Wyczyszczenie mapy przed ponownym narysowaniem obiektów
+        # Clear the map before redrawing objects
         self.canvas.delete("all")
-        self.object_positions = []
-        self.object_code_lines = []
+        self.object_positions = []  # Reset the list of object positions
+        self.object_code_lines = []  # Reset the list of object code lines
 
-        # Odczytanie edytowanych danych z output_text
+        # Read and process the edited data from output_text widget
         lines = self.output_text.get(1.0, tk.END).splitlines()
 
         for line in lines:
             line = line.strip()
+            
+            # Skip comments and empty lines
             if line.startswith("//") or not line:
                 continue
 
-            # Dopasowanie do wzorca
+            # Regex pattern to match the CreateObject command
             match = re.match(r"^CreateObject pos=\s*([\d.-]+);\s*([\d.-]+)\s*(.+)", line)
             if match:
-                x = float(match.group(1))
-                y = float(match.group(2))
-                rest_of_line = match.group(3)
+                x = float(match.group(1))  # Extract X coordinate
+                y = float(match.group(2))  # Extract Y coordinate
+                rest_of_line = match.group(3)  # Remaining part of the line (e.g., direction, type)
 
-                # Dodanie obiektu na mapie
+                # Add object to the map based on the extracted data
                 self.add_object_to_map(x, y, rest_of_line)
 
-        self.redraw_map()  # Zaktualizuj mapę
+        self.redraw_map()  # Update the map after objects are added
         messagebox.showinfo("Success", "Map refreshed successfully!")
 
     def copy_output(self):
        self.parent.clipboard_clear()
        self.parent.clipboard_append(self.output_text.get(1.0, tk.END))
        self.parent.update()
+
+    def confirm_clear_map(self):
+        """Zapytanie potwierdzające przed wyczyszczeniem mapy."""
+        confirm = messagebox.askyesno("Confirm Clear Map", "Are you sure you want to clear the map?")
+        if confirm:
+            self.clear_map()
 
     def clear_map(self):
         self.canvas.delete("all")
