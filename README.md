@@ -19,6 +19,7 @@ The Map Editor is the central component, offering a rich set of features for det
 - **Cursor and Object Information**:  
   - View the precise position on the map where the cursor is located.  
   - Hover over a placed object on the map to instantly see its details, including object type and attributes.
+- **Multi-Object Selection and Random Placement:** The Listbox now supports multi-selection, allowing you to choose multiple objects using Ctrl or Shift. When placing an object, the editor can randomly select one from the chosen objects, streamlining the creation of diverse environments.
 
 #### **Random Object Generation**  
 This feature allows users to populate a specific area with random objects by defining:  

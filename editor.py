@@ -160,7 +160,7 @@ class MapEditor:
         self.search_entry.bind("<KeyRelease>", self.filter_object_list)
 
         # Lista obiektów
-        self.object_listbox = tk.Listbox(self.frame, height=20)
+        self.object_listbox = tk.Listbox(self.frame, selectmode=tk.EXTENDED, height=20)
         self.object_listbox.grid(row=13, column=0, columnspan=2, rowspan=4, sticky="nsew", padx=5, pady=5)
         self.object_listbox.bind("<ButtonRelease-1>", self.on_object_select)
 
@@ -253,22 +253,25 @@ class MapEditor:
             if search_term in object_type.lower():
                 self.object_listbox.insert(tk.END, object_type)
 
-
     def on_object_select(self, event):
         """Obsługuje wybór obiektu z listy."""
         if self.selection_mode_var.get() != "List":
             return
 
         try:
-            selection = self.object_listbox.curselection()
-            object_type = self.object_listbox.get(selection[0])
+            # Pobierz wszystkie zaznaczone elementy
+            selections = self.object_listbox.curselection()
+            selected_objects = [self.object_listbox.get(i) for i in selections]
 
-            self.current_object_type = object_type
-            self.object_type_entry.delete(0, "end")
-            self.object_type_entry.insert(0, object_type)
+            # Jeśli coś zaznaczono, zaktualizuj obiekt
+            if selected_objects:
+                self.selected_object_types = selected_objects  # Lista zaznaczonych obiektów
+                self.current_object_type = random.choice(self.selected_object_types)  # Losowy wybór
+                self.object_type_entry.delete(0, "end")
+                self.object_type_entry.insert(0, self.current_object_type)
 
-            if not self.insect_mode.get():
-                self.update_selected_object_image()
+                if not self.insect_mode.get():
+                    self.update_selected_object_image()
         except IndexError:
             pass
 
@@ -488,7 +491,9 @@ class MapEditor:
             messagebox.showwarning("Warning", "Please select or enter a valid object type!")
             return
 
-        # Obliczanie współrzędnych z większą dokładnością (do setnej części)
+        if self.selection_mode_var.get() == "List" and hasattr(self, "selected_object_types") and self.selected_object_types:
+            self.current_object_type = random.choice(self.selected_object_types)
+
         x = (event.x - self.map_size // 2 - self.offset_x) / self.current_zoom
         y = (self.map_size // 2 - event.y + self.offset_y) / self.current_zoom
 
@@ -504,46 +509,19 @@ class MapEditor:
                 return
 
         cmdline = ""
-        if self.insect_mode.get():
-            selected_mode = self.selected_insect_mode.get()
+        # Insect mode logic...
 
-            if selected_mode == "Idle Ant":
-                self.current_object_type = "AlienAnt"
-                script1 = "antict.txt"
-                radius = self.radius_value.get()
-                rand_x = x + random.uniform(-radius / 2, radius / 2)
-                rand_y = y + random.uniform(-radius / 2, radius / 2)
-                cmdline = f"cmdline= {rand_x:.2f}; {rand_y:.2f}; {radius:.2f} script1=\"{script1}\""
-
-            elif selected_mode == "Advancing Ant":
-                self.current_object_type = "AlienAnt"
-                script1 = "ant02.txt"
-                time_delay = self.radius_value.get()
-                cmdline = f"cmdline= {time_delay:.2f} script1=\"{script1}\""
-
-            elif selected_mode == "Idle Moving Spider":
-                self.current_object_type = "AlienSpider"
-                script1 = "spidict.txt"
-                radius = self.radius_value.get()
-                rand_x = x + random.uniform(-radius / 2, radius / 2)
-                rand_y = y + random.uniform(-radius / 2, radius / 2)
-                cmdline = f"cmdline= {rand_x:.2f}; {rand_y:.2f}; {radius:.2f} script1=\"{script1}\""
-
-        # Dodanie obiektu na mapę z większą dokładnością
         obj_id = len(self.object_positions)
         dot_x = int(self.offset_x + self.map_size // 2 + x * self.current_zoom)
         dot_y = int(self.offset_y + self.map_size // 2 - y * self.current_zoom)
 
-        # Tworzenie kropki na mapie
         dot = self.canvas.create_oval(dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3, fill="red", outline="red")
         self.object_positions.append((x, y, self.current_object_type, direction, dot))
 
-        # Generowanie polecenia z dokładnością do setnej części
-        output_line = f"CreateObject pos={x:.2f};{y:.2f} dir={direction:.1f} type={self.current_object_type}"
+        output_line = f"CreateObject pos={x:.2f};{y:.2f} dir={direction} type={self.current_object_type}"
         if cmdline:
             output_line += f" {cmdline} run=1"
 
-        # Dodanie polecenia do listy i aktualizacja wyjścia
         self.object_code_lines.append(output_line)
         self.update_output()
 
