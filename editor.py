@@ -1165,7 +1165,7 @@ foot_frame = tk.Frame(root)
 foot_frame.pack(side="bottom", fill="x", padx=10, pady=10)
 
 # Etykieta z tekstem w lewym dolnym rogu
-label = tk.Label(foot_frame, text="Colobot Positions Multi-Tool Calculator Version: 1.1.0\nAuthor: bipel88", font=("Arial", 8), anchor="w", justify="left")
+label = tk.Label(foot_frame, text="Colobot Positions Multi-Tool Calculator Version: 1.1.1\nAuthor: bipel88", font=("Arial", 8), anchor="w", justify="left")
 label.pack(side="left")
 
 # Etykieta z tekstem w lewym dolnym rogu
