@@ -617,8 +617,8 @@ class MapEditor:
         x_click = (event.x - self.map_size // 2 - self.offset_x) / self.current_zoom
         y_click = (self.map_size // 2 - event.y + self.offset_y) / self.current_zoom
 
-        # Znajdź najbliższy obiekt w zasięgu (np. promień 5 jednostek)
-        radius = 5 / self.current_zoom  # Promień zależny od zoomu
+        # Znajdź najbliższy obiekt w zasięgu 10 jednostek
+        radius = 10 / self.current_zoom  # Promień zależny od zoomu
         for i, obj in enumerate(self.object_positions):
             if len(obj) == 5:  # Case for 5 values: (x, y, obj_type, direction, dot)
                 x, y, obj_type, direction, dot = obj
@@ -1165,7 +1165,7 @@ foot_frame = tk.Frame(root)
 foot_frame.pack(side="bottom", fill="x", padx=10, pady=10)
 
 # Etykieta z tekstem w lewym dolnym rogu
-label = tk.Label(foot_frame, text="Colobot Positions Multi-Tool Calculator Version: 1.1.1\nAuthor: bipel88", font=("Arial", 8), anchor="w", justify="left")
+label = tk.Label(foot_frame, text="Colobot Positions Multi-Tool Calculator Version: 1.1.2\nAuthor: bipel88", font=("Arial", 8), anchor="w", justify="left")
 label.pack(side="left")
 
 # Etykieta z tekstem w lewym dolnym rogu
